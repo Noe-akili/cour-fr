@@ -1,0 +1,21 @@
+{
+  "name": "tauricours-docs",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Documentation statique du cours Tauri 2 — Rust, Vue 3 et Yarn",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.2.5",
+    "@fontsource-variable/jetbrains-mono": "^5.2.5",
+    "highlight.js": "^11.11.1",
+    "marked": "^15.0.7"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
+  }
+}
