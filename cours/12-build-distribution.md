@@ -18,6 +18,8 @@ Sommaire : [← Chapitre précédent](./11-tests-debogage.md) · [README](../REA
 yarn tauri build
 ```
 
+> 🧭 **Explication.** Cette commande lance la chaîne de build de production : Tauri exécute d'abord `beforeBuildCommand` (ici `yarn build`), puis compile le crate Rust en mode `release` avec optimisations et LTO. Le binaire, les assets frontend et les ressources sont ensuite empaquetés dans les installateurs propres à chaque plateforme. Lancez-la sur chaque OS cible, car un installateur ne peut généralement pas être produit pour une autre plateforme depuis Linux.
+
 Déroulé :
 
 1. `beforeBuildCommand` → `yarn build` (typecheck + Vite).
@@ -46,6 +48,8 @@ yarn tauri build --target aarch64-apple-darwin
 yarn tauri build --verbose
 ```
 
+> 🧭 **Explication.** Ces variantes modifient le comportement du build : `--debug` accélère la compilation mais produit un binaire non optimisé, `--bundles` limite les formats générés et `--no-bundle` ne conserve que le binaire. `--target` sert à compiler pour une autre architecture, par exemple Apple Silicon depuis une machine Intel correctement outillée. Utilisez ces options pour itérer vite ou ne produire que l'artefact dont vous avez besoin.
+
 > 💡 Un build release peut prendre 5 à 20 minutes selon la machine. En CI, le cache Cargo est indispensable (chapitre 13).
 
 ---
@@ -59,6 +63,8 @@ Préparez un PNG carré de **1024 × 1024** avec transparence, puis :
 ```bash
 yarn tauri icon ./app-icon.png
 ```
+
+> 🧭 **Explication.** La commande part d'un PNG carré de 1024 × 1024 et génère automatiquement toutes les tailles et formats attendus par les plateformes. Elle évite de produire à la main les variantes macOS, Windows, tray et stores, qui doivent respecter des dimensions précises. Conservez l'image source dans le dépôt ou un stockage partagé afin de pouvoir régénérer le jeu après une modification graphique.
 
 Cela génère dans `src-tauri/icons/` :
 
@@ -111,6 +117,8 @@ Le fichier source n'a pas besoin d'être committé, mais conservez-le pour rég�
 }
 ```
 
+> 🧭 **Explication.** Ce fragment de `tauri.conf.json` active l'empaquetage et décrit les métadonnées communes à tous les installateurs. `targets` restreint les formats produits, `icon` liste les fichiers générés à l'étape précédente, et `resources` embarque des fichiers supplémentaires dans l'application. `fileAssociations` permet d'ouvrir les fichiers `.taurinote` avec l'application ; adaptez les descriptions et la catégorie avant publication.
+
 ### 3.1 Catégories
 
 Valeurs courantes : `Business`, `DeveloperTool`, `Education`, `Entertainment`, `Finance`, `Game`, `GraphicsAndDesign`, `HealthcareAndFitness`, `Lifestyle`, `Medical`, `Music`, `News`, `Photography`, `Productivity`, `Reference`, `SocialNetworking`, `Sports`, `Travel`, `Utility`, `Video`, `Weather`.
@@ -137,6 +145,8 @@ Valeurs courantes : `Business`, `DeveloperTool`, `Education`, `Entertainment`, `
 }
 ```
 
+> 🧭 **Explication.** Cette configuration Windows choisit comment WebView2 est fourni et comment l'installateur NSIS se comporte. `downloadBootstrapper` télécharge le runtime au moment de l'installation, ce qui garde l'installeur léger, tandis que `installMode: "currentUser"` évite d'exiger les droits administrateur. Les listes `languages` localisent l'assistant NSIS et WiX ; vérifiez que les langues choisies sont bien prises en charge par votre version de Tauri.
+
 | Option WebView2 | Effet |
 |---|---|
 | `downloadBootstrapper` | Télécharge WebView2 à l'installation (petit) |
@@ -161,6 +171,8 @@ Valeurs courantes : `Business`, `DeveloperTool`, `Education`, `Entertainment`, `
 }
 ```
 
+> 🧭 **Explication.** Ce bloc règle le comportement macOS : `minimumSystemVersion` fixe la plus ancienne version d'OS acceptée, `entitlements` référence le fichier de droits nécessaire au sandbox, aux notifications ou au réseau, et `exceptionDomain` ouvre une exception ATS pour un domaine distant. Laissez `exceptionDomain` vide sauf contrainte forte, car chaque exception affaiblit la sécurité réseau. Vérifiez les entitlements avec la signature et la notarisation avant diffusion.
+
 - `minimumSystemVersion` : version minimale supportée.
 - `entitlements` : requis pour le sandbox, les notifications, l'accès réseau.
 - `exceptionDomain` : exceptions ATS (à éviter).
@@ -182,11 +194,15 @@ Valeurs courantes : `Business`, `DeveloperTool`, `Education`, `Entertainment`, `
 }
 ```
 
+> 🧭 **Explication.** Ce fragment adapte les paquets Linux : `deb.depends` déclare explicitement les bibliothèques système requises, et `bundleMediaFramework` contrôle l'embarquement de GStreamer dans l'AppImage. Désactiver le framework média réduit fortement la taille, mais casse la lecture audio/vidéo si l'utilisateur ne dispose pas des codecs sur sa machine. Tauri détecte souvent les dépendances Debian tout seul ; ne les surchargez que si le paquet généré est incomplet.
+
 Les dépendances Debian sont souvent détectées automatiquement. Vérifiez avec :
 
 ```bash
 dpkg-deb -I src-tauri/target/release/bundle/deb/*.deb
 ```
+
+> 🧭 **Explication.** `dpkg-deb -I` affiche les métadonnées du paquet Debian produit : nom, version, architecture, dépendances et mainteneur. C'est le moyen rapide de vérifier que les dépendances détectées sont correctes et que la version correspond au tag avant de publier. Faites-le sur une machine propre ou dans une VM pour éviter de dépendre de bibliothèques déjà installées.
 
 ---
 
@@ -214,6 +230,8 @@ Achetez un certificat de signature de code (OV ou EV), puis configurez :
 }
 ```
 
+> 🧭 **Explication.** Ces options indiquent à Tauri comment signer l'exécutable Windows : `certificateThumbprint` identifie le certificat installé dans le magasin Windows, `digestAlgorithm` fixe l'algorithme de hachage et `timestampUrl` ajoute un horodatage signé. L'horodatage est essentiel : il permet à la signature de rester valide après l'expiration du certificat. Vérifiez l'empreinte exacte du certificat et ne la confondez pas avec son numéro de série.
+
 Ou utilisez une commande de signature personnalisée (Azure Trusted Signing, HSM) :
 
 ```json
@@ -228,6 +246,8 @@ Ou utilisez une commande de signature personnalisée (Azure Trusted Signing, HSM
   }
 }
 ```
+
+> 🧭 **Explication.** `signCommand` remplace la signature intégrée par un appel à `signtool`, ce qui permet d'utiliser un HSM, Azure Trusted Signing ou un certificat non installé localement. Les arguments sont transmis à l'outil, `%1` représentant l'artefact à signer et `$PASSWORD` une variable d'environnement fournie par la CI. Ne stockez jamais le `.pfx` ni son mot de passe dans le dépôt ; injectez-les comme secrets au moment du build.
 
 > ⚠️ Ne commitez jamais un `.pfx` ni son mot de passe. Utilisez des secrets CI.
 
@@ -246,6 +266,8 @@ export APPLE_SIGNING_IDENTITY="Developer ID Application: Votre Nom (TEAMID)"
 yarn tauri build
 ```
 
+> 🧭 **Explication.** Cette commande exporte l'identité de signature macOS puis lance le build, afin que Tauri signe automatiquement l'application avec le certificat correspondant présent dans le trousseau. La chaîne doit reprendre exactement le nom du certificat « Developer ID Application » et l'identifiant d'équipe entre parenthèses. Sans cette variable, le binaire peut être produit mais Gatekeeper le refusera chez vos utilisateurs.
+
 Notarisation :
 
 ```bash
@@ -254,6 +276,8 @@ export APPLE_PASSWORD="mot-de-passe-application"   # mot de passe d'application,
 export APPLE_TEAM_ID="TEAMID"
 yarn tauri build
 ```
+
+> 🧭 **Explication.** Ces variables fournissent à Tauri les identifiants nécessaires pour soumettre automatiquement l'application au service de notarisation d'Apple après la signature. `APPLE_PASSWORD` doit être un mot de passe d'application généré depuis le compte Apple, jamais le mot de passe principal. La notarisation ajoute un aller-retour réseau de plusieurs minutes ; conservez les mêmes valeurs dans les secrets CI pour les releases.
 
 Tauri signe puis notarise automatiquement si ces variables sont présentes.
 
@@ -265,6 +289,8 @@ spctl --assess --type execute --verbose src-tauri/target/release/bundle/macos/Ta
 xcrun stapler validate src-tauri/target/release/bundle/dmg/Taurinote_0.1.0_aarch64.dmg
 ```
 
+> 🧭 **Explication.** Ces trois commandes contrôlent la chaîne de confiance macOS : `codesign --verify` valide la signature et son intégrité, `spctl --assess` simule l'évaluation Gatekeeper, et `stapler validate` vérifie que le ticket de notarisation est bien agrafé au DMG. Exécutez-les avant de publier, car une notarisation incomplète produit l'erreur « application endommagée » chez l'utilisateur. Adaptez les chemins et la version à l'artefact réellement généré.
+
 > ⚠️ La notarisation peut prendre plusieurs minutes. En CI, prévoyez un timeout suffisant.
 
 ### 4.4 Linux
@@ -274,6 +300,8 @@ Pas de signature obligatoire. Publiez :
 ```bash
 sha256sum Taurinote_0.1.0_amd64.AppImage > Taurinote_0.1.0_amd64.AppImage.sha256
 ```
+
+> 🧭 **Explication.** Cette commande calcule l'empreinte SHA-256 de l'AppImage et l'écrit dans un fichier `.sha256` publié à côté de l'artefact. L'utilisateur peut ensuite vérifier que le téléchargement n'a pas été altéré avec `sha256sum -c`. Adaptez le nom du fichier à la version et à l'architecture réellement produites.
 
 Pour les dépôts APT, signez les métadonnées avec GPG.
 
@@ -305,6 +333,8 @@ Tauri utilise **minisign** pour vérifier la signature des artefacts. La clé pu
 yarn tauri signer generate -w ~/.tauri/taurinote.key
 ```
 
+> 🧭 **Explication.** Cette commande crée une paire de clés minisign dédiée aux mises à jour et écrit la clé privée dans le chemin indiqué par `-w`. Elle demande un mot de passe qui protège la clé privée ; ce mot de passe sera aussi nécessaire en CI. La clé publique servira à configurer l'updater, tandis que la clé privée ne doit jamais quitter votre coffre de secrets.
+
 Sortie :
 
 ```
@@ -312,6 +342,8 @@ Your keypair was generated successfully.
 Private: ~/.tauri/taurinote.key (keep it secret!)
 Public:  dW50cnVzdGVk...
 ```
+
+> 🧭 **Explication.** Cette sortie confirme la création de la paire et affiche la clé publique à recopier dans la configuration de l'updater. Le chemin mentionné contient la clé privée : conservez-le hors du dépôt et sauvegardez-le, car sa perte empêcherait de signer de futures mises à jour.
 
 - **Clé publique** → `tauri.conf.json` (`plugins.updater.pubkey`).
 - **Clé privée** → secret CI (`TAURI_SIGNING_PRIVATE_KEY`).
@@ -325,6 +357,8 @@ Public:  dW50cnVzdGVk...
 yarn tauri add updater
 yarn tauri add process
 ```
+
+> 🧭 **Explication.** Ces commandes installent le plugin d'updater et le plugin `process`, qui fournit la fonction `relaunch` utilisée après installation d'une mise à jour. `tauri add` met à jour les dépendances Rust et npm, enregistre les plugins et ajoute les permissions de base. Relisez ensuite les capabilities générées : elles doivent rester limitées aux fenêtres et aux actions réellement nécessaires.
 
 `tauri.conf.json` :
 
@@ -343,6 +377,8 @@ yarn tauri add process
   }
 }
 ```
+
+> 🧭 **Explication.** `createUpdaterArtifacts` demande à Tauri de produire les archives et signatures `.sig` nécessaires à l'updater lors du build. La clé `pubkey` vérifie ces signatures côté client, et `endpoints` liste les URL où l'application cherche `latest.json` ; plusieurs endpoints servent de repli. Les permissions `updater:default` et `process:allow-restart` doivent être déclarées dans une capability pour autoriser la vérification et le redémarrage.
 
 Capabilities : `updater:default`, `process:allow-restart`.
 

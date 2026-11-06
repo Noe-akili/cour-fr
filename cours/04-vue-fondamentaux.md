@@ -51,6 +51,8 @@ const hasFilters = computed(() => filters.search !== "" || filters.priority !== 
 </template>
 ```
 
+> 🧭 **Explication.** Cet exemple déclare trois formes de réactivité : `ref` pour le compteur primitif, `reactive` pour l'objet de filtres, et `computed` pour une valeur dérivée. Dans le template, `v-model` lie directement `filters.search` et Vue déballe automatiquement `count`. On retient que `count.value` n'est nécessaire que dans le script, jamais dans le template.
+
 Règles pratiques :
 
 - `ref` pour les primitives, les tableaux et les objets que vous remplacez entièrement.
@@ -90,6 +92,8 @@ const emit = defineEmits<{
 </template>
 ```
 
+> 🧭 **Explication.** Le composant reçoit une tâche typée via `defineProps` et déclare trois événements avec `defineEmits`. Le template utilise `:checked`, `:disabled` et `@change` pour refléter l'état sans modifier la prop, puis `emit` pour remonter l'intention au parent. Cette séparation évite les mutations de props et garde `TodoItem` réutilisable.
+
 > 💡 En Vue 3.3+, la syntaxe typée `defineEmits<{ toggle: [id: number] }>()` documente précisément les événements. Elle est préférable à `(e: 'toggle', id: number) => void` pour les nouveaux projets.
 
 ### 2.3 Cycle de vie et nettoyage
@@ -112,6 +116,8 @@ onUnmounted(() => {
 </script>
 ```
 
+> 🧭 **Explication.** `onMounted` démarre un intervalle et `onUnmounted` l'annule avec `clearInterval`. Sans ce nettoyage, chaque montage du composant laisserait un timer actif, ce qui consomme des ressources et peut déclencher des traitements sur un composant détruit. Le même réflexe s'applique aux écouteurs d'événements et aux requêtes annulables.
+
 Dans Tauri, le nettoyage est **critique** pour les listeners IPC :
 
 ```ts
@@ -130,6 +136,8 @@ onUnmounted(() => {
 });
 ```
 
+> 🧭 **Explication.** Ici, `listen` renvoie une promesse contenant une fonction de désabonnement, stockée dans `unlisten`. `onUnmounted` l'appelle pour retirer l'écouteur Tauri. C'est le pendant IPC du timer : un listener oublié continue de recevoir les événements après la destruction du composant et peut provoquer des fuites ou des actions dupliquées.
+
 Si vous oubliez `unlisten`, chaque montage ajoute un listener : fuite mémoire et actions dupliquées. Nous verrons un composable dédié.
 
 ### 2.4 `watch` et `watchEffect`
@@ -146,6 +154,8 @@ watch(
   { immediate: true }
 );
 ```
+
+> 🧭 **Explication.** `watch` observe le getter `() => filters.search` et exécute le callback à chaque changement. L'option `immediate: true` déclenche aussi le callback au montage, ce qui initialise l'affichage. Pour un appel réseau, ajoutez un `debounce` ou un `AbortController` afin d'éviter une requête par frappe.
 
 Pour un appel asynchrone déclenché par un filtre, préférez un `debounce` explicite ou un `AbortController`.
 
@@ -178,6 +188,8 @@ src/
 └── main.ts
 ```
 
+> 🧭 **Explication.** Cette arborescence sépare les responsabilités : `api/` encapsule les appels Tauri, `components/` et `views/` ne gèrent que l'interface, `composables/` regroupe la logique réutilisable, et `stores/` porte l'état global. Cette organisation facilite les tests et évite qu'un composant connaisse directement `invoke`. Adaptez les noms à votre domaine, mais conservez la séparation.
+
 ### 3.1 Types partagés
 
 `src/types/index.ts` :
@@ -195,6 +207,8 @@ export interface Todo {
   createdAt: string;
 }
 ```
+
+> 🧭 **Explication.** Ces types TypeScript décrivent le contrat attendu par le frontend : `Priority` est une union de chaînes et `Todo` reflète les champs renvoyés par Rust, avec `dueDate` nullable. Ils ne valident rien à l'exécution ; ils servent à l'autocomplétion et au compilateur. Il faut donc les garder synchronisés avec les structures Serde du chapitre 05.
 
 > ⚠️ Ces types sont une **promesse**, pas une garantie. Rust peut renvoyer autre chose. Validez les données aux frontières (chapitre 05).
 
@@ -242,6 +256,8 @@ export async function call<T>(
 }
 ```
 
+> 🧭 **Explication.** `call<T>` centralise les appels IPC : elle vérifie d'abord `isTauri()` pour échouer proprement en mode navigateur, puis enveloppe `invoke` dans un `try/catch`. Les erreurs Rust, souvent sérialisées en chaîne, sont converties en `TauriError` avec le nom de la commande. Les composants n'ont ainsi qu'un point d'entrée typé à tester et à faire évoluer.
+
 `isTauri()` existe dans `@tauri-apps/api/core` depuis Tauri 2. Il permet de garder `yarn dev` utilisable dans un navigateur, avec des données de démonstration.
 
 ### 3.3 La couche métier
@@ -272,6 +288,8 @@ export const todosApi = {
   update: (todo: Todo) => call<Todo>("update_todo", { todo }),
 };
 ```
+
+> 🧭 **Explication.** `todosApi` expose une méthode par commande Rust et fixe le type de retour de chacune : `Todo[]`, `Todo` ou `void`. Les arguments sont passés sous la forme attendue par Serde, par exemple `{ input }` pour `create_todo`. Cette couche évite de répéter les noms de commandes et les types dans les composants.
 
 Cette couche isole les composants des détails IPC et facilite les tests (on mocke `todosApi`, pas `invoke`).
 
@@ -348,6 +366,8 @@ export const useTodosStore = defineStore("todos", () => {
 });
 ```
 
+> 🧭 **Explication.** Ce store Pinia en syntaxe « setup » déclare l'état avec `ref`, les valeurs dérivées avec `computed`, puis retourne tout ce qui doit être accessible. `load` gère `loading` et `error` dans un `try/finally`, tandis que `create`, `toggle` et `remove` mettent à jour la liste après l'appel API. Les composants consomment ensuite le store sans connaître le transport IPC.
+
 Bonnes pratiques :
 
 - Le store ne connaît pas les détails de transport : il appelle `todosApi`.
@@ -392,6 +412,8 @@ const router = createRouter({
 export default router;
 ```
 
+> 🧭 **Explication.** `createWebHashHistory` produit des URLs de la forme `#/settings`, ce qui évite les problèmes de réécriture de chemins dans la WebView Tauri. Chaque route utilise un `import()` dynamique pour être chargée à la demande. Le routeur est exporté puis monté dans `main.ts` avec `app.use(router)`.
+
 Le `import()` dynamique est recommandé : chaque vue devient un chunk séparé, et la fenêtre principale démarre plus vite.
 
 ### 5.2 Routes et fenêtres multiples
@@ -402,6 +424,8 @@ Une fenêtre secondaire peut charger une route précise :
 WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("index.html#/settings".into()))
 ```
 
+> 🧭 **Explication.** Cette ligne crée une fenêtre nommée `settings` et lui demande de charger la route `#/settings` de l'application. Le label `settings` servira ensuite à cibler la fenêtre avec `emit_to` ou à la retrouver via `get_webview_window`. La chaîne passée à `WebviewUrl::App` est relative au bundle frontend.
+
 Ou côté JS :
 
 ```ts
@@ -409,6 +433,8 @@ const url = new URL(window.location.href);
 url.hash = "#/settings";
 await WebviewWindow.getByLabel("settings").then((w) => w?.navigate(url.toString()));
 ```
+
+> 🧭 **Explication.** Ce code récupère l'URL courante, remplace son fragment par `#/settings`, puis demande à la fenêtre déjà ouverte de naviguer vers cette adresse. On utilise `getByLabel` pour retrouver la fenêtre par son label et `?.` pour ne rien faire si elle n'existe pas. C'est une alternative au routage interne de Vue lorsque la fenêtre est gérée côté Tauri.
 
 Nous détaillons les fenêtres au chapitre 10.
 
@@ -422,6 +448,8 @@ router.beforeEach((to) => {
   return true;
 });
 ```
+
+> 🧭 **Explication.** `beforeEach` s'exécute avant chaque navigation et peut l'annuler en retournant `false`. Ici, la garde empêche de quitter la page tant que `store.loading` est vrai. Le store est instancié à l'intérieur de la fonction, après l'installation de Pinia, ce qui évite l'erreur classique d'un store utilisé trop tôt.
 
 > ⚠️ N'appelez pas `useTodosStore()` au niveau module avant `app.use(pinia)`. Faites-le dans le corps de la garde, après l'initialisation.
 

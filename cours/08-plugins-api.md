@@ -26,6 +26,8 @@ Un plugin Tauri est composé de :
 yarn tauri add dialog
 ```
 
+> 🧭 **Explication.** `tauri add` installe le plugin de bout en bout : dépendance Rust, package npm, enregistrement dans le builder et permission par défaut. C'est le moyen le plus rapide de démarrer, mais la permission choisie est souvent plus large que nécessaire. Relisez ensuite les fichiers modifiés et resserrez les droits.
+
 Cette commande :
 
 - ajoute `tauri-plugin-dialog` à `Cargo.toml` ;
@@ -42,6 +44,8 @@ yarn add @tauri-apps/plugin-dialog
 cd src-tauri && cargo add tauri-plugin-dialog
 ```
 
+> 🧭 **Explication.** L'installation manuelle sépare l'ajout du package JavaScript et celui de la crate Rust. Elle est utile quand vous voulez maîtriser les versions ou intégrer le plugin dans un projet existant. Il reste ensuite à déclarer l'initialisation Rust et la permission, sinon l'appel échouera.
+
 `src-tauri/src/lib.rs` :
 
 ```rust
@@ -49,11 +53,15 @@ tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
 ```
 
+> 🧭 **Explication.** Cette ligne enregistre l'extension dans le builder Tauri : elle branche les commandes natives du plugin avant le lancement de l'application. Sans cet appel, le package JavaScript serait présent mais l'IPC ne trouverait aucune commande à joindre. L'initialisation se fait une seule fois, au démarrage.
+
 `src-tauri/capabilities/default.json` :
 
 ```json
 { "permissions": ["dialog:default"] }
 ```
+
+> 🧭 **Explication.** La capability autorise explicitement le plugin `dialog` pour la fenêtre concernée. `dialog:default` regroupe les permissions courantes d'ouverture, de sauvegarde et de messages ; en production, préférez des permissions ciblées comme `allow-open` ou `allow-save`. Sans cette déclaration, les appels natifs sont refusés.
 
 ---
 
@@ -79,6 +87,8 @@ if (file === null) {
 console.log(file); // chemin absolu (string)
 ```
 
+> 🧭 **Explication.** `open()` affiche le sélecteur natif et renvoie le chemin absolu du fichier choisi, ou `null` si l'utilisateur annule. Les filtres limitent les types proposés, mais ne valident pas le contenu : vérifiez toujours le JSON importé. L'annulation est un cas normal, pas une exception.
+
 Avec `multiple: true`, le retour est `string[] | null`.
 
 ### 2.2 Enregistrer un fichier
@@ -95,6 +105,8 @@ if (path) {
   await writeTextFile(path, JSON.stringify(data, null, 2));
 }
 ```
+
+> 🧭 **Explication.** `save()` laisse l'utilisateur choisir la destination et renvoie un chemin, ou `null` en cas d'annulation. On écrit ensuite avec `writeTextFile`, dont le chemin est déjà couvert par le scope accordé au dialogue. Sérialisez avec indentation pour produire un fichier lisible et diffusable.
 
 ### 2.3 Messages et confirmations
 
@@ -115,6 +127,8 @@ if (sure) {
   });
 }
 ```
+
+> 🧭 **Explication.** `message` informe, tandis que `ask` et `confirm` demandent une décision et renvoient un booléen. Le second appel illustre une confirmation en deux étapes pour une action destructrice. Adaptez le `kind` (`info`, `warning`, `error`) au contexte afin que l'utilisateur perçoive la gravité.
 
 `message` retourne `void` ; `ask` et `confirm` retournent un booléen.
 
@@ -137,6 +151,8 @@ Pour persister ces autorisations entre deux lancements :
 yarn tauri add persisted-scope
 ```
 
+> 🧭 **Explication.** Par défaut, les chemins autorisés par un dialogue ne le sont que pour la session courante. Ce plugin persiste ces autorisations entre deux lancements, ce qui évite de redemander l'accès aux mêmes fichiers. À utiliser avec parcimonie : un scope persistant élargit durablement la surface d'écriture.
+
 ---
 
 ## 3. `fs` — système de fichiers
@@ -158,6 +174,8 @@ await writeTextFile("config.json", JSON.stringify({ theme: "dark" }), {
   baseDir: BaseDirectory.AppConfig,
 });
 ```
+
+> 🧭 **Explication.** `baseDir` ancre le chemin relatif dans un répertoire applicatif géré par Tauri, ici la configuration. Cela évite de coder un chemin absolu différent selon l'OS. La lecture échoue si le fichier n'existe pas : prévoyez une valeur par défaut ou un `try/catch`.
 
 ### 3.2 Répertoires applicatifs
 
@@ -184,6 +202,8 @@ const copy = new Uint8Array(bytes);
 await writeFile("avatar-copy.png", copy, { baseDir: BaseDirectory.AppData });
 ```
 
+> 🧭 **Explication.** `readFile` renvoie un tableau d'octets, recopié ici dans un `Uint8Array` avant réécriture. Ce type est adapté aux images, PDF ou archives, contrairement aux fonctions texte. Le même `baseDir` garantit que lecture et écriture restent dans le répertoire de données de l'application.
+
 ### 3.4 Manipulations
 
 ```ts
@@ -205,6 +225,8 @@ await rename("exports/a.json", "exports/b.json", {
 await remove("exports/ancien.json", { baseDir: BaseDirectory.AppData });
 ```
 
+> 🧭 **Explication.** Cet exemple enchaîne les opérations courantes : tester l'existence, créer un dossier, lister, inspecter, renommer puis supprimer. `readDir` et `stat` renvoient des métadonnées, pas le contenu des fichiers. Notez les deux `baseDir` distincts pour un renommage, car source et destination peuvent être dans des racines différentes.
+
 ### 3.5 Sécurité des chemins
 
 - Les chemins relatifs doivent être associés à un `baseDir`.
@@ -218,6 +240,8 @@ import { join, appDataDir } from "@tauri-apps/api/path";
 const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
 const path = await join(await appDataDir(), "exports", safeName);
 ```
+
+> 🧭 **Explication.** Le nom fourni par l'utilisateur est d'abord nettoyé pour ne garder que des caractères sûrs, puis joint au répertoire de données. Cette étape empêche un `../` ou un séparateur de faire sortir le chemin du dossier prévu. Ne faites jamais confiance à un nom de fichier brut, même dans une application locale.
 
 ---
 
@@ -235,6 +259,8 @@ await openPath("/home/user/Documents/rapport.pdf");
 // Révèle un fichier dans le gestionnaire de fichiers
 await revealItemInDir("/home/user/Documents/rapport.pdf");
 ```
+
+> 🧭 **Explication.** Le plugin `opener` délègue l'ouverture au système : navigateur pour une URL, application associée pour un fichier, gestionnaire de fichiers pour une révélation. Il évite d'embarquer un moteur de rendu ou un explorateur. Chaque fonction reste soumise aux permissions et au scope déclarés.
 
 Permissions :
 

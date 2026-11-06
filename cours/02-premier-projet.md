@@ -19,6 +19,8 @@ Placez-vous dans le dossier parent, puis lancez :
 yarn create tauri-app
 ```
 
+> 🧭 **Explication.** Cette commande télécharge et exécute `create-tauri-app`, l'utilitaire officiel de génération de projet. Elle ne nécessite aucune installation globale : Yarn récupère la dernière version à la volée. Le CLI pose ensuite une série de questions pour choisir le nom, l'identifiant, le framework frontend et le gestionnaire de paquets.
+
 Le CLI `create-tauri-app` pose une série de questions :
 
 ```
@@ -29,6 +31,8 @@ Le CLI `create-tauri-app` pose une série de questions :
 ? Choose your UI template › Vue
 ? Choose your UI flavor › TypeScript
 ```
+
+> 🧭 **Explication.** Ces lignes montrent les réponses à fournir pour obtenir un projet Vue 3 en TypeScript avec Yarn. Le nom `taurinote` devient le dossier du projet, et l'identifiant `com.tauricours.taurinote` sert de nom système unique à l'application. Les choix `Vue` puis `TypeScript` déterminent le template et les fichiers générés.
 
 > L'**identifier** doit être unique et au format inversé d'un nom de domaine (`com.entreprise.app`). Il sert d'identifiant système sur macOS, iOS, Android et pour les stores. Ne le changez pas après publication.
 
@@ -43,6 +47,8 @@ yarn create tauri-app taurinote \
   --identifier com.tauricours.taurinote \
   --yes
 ```
+
+> 🧭 **Explication.** Cette variante passe toutes les réponses en options pour éviter les questions interactives, ce qui est pratique en CI ou dans un script. `--manager yarn` impose Yarn, `--template vue-ts` choisit Vue avec TypeScript, et `--yes` accepte les valeurs restantes par défaut. Vérifiez l'identifiant avant de lancer la commande, car il est difficile à changer ensuite.
 
 Options utiles :
 
@@ -85,6 +91,8 @@ taurinote/
 └── vite.config.ts
 ```
 
+> 🧭 **Explication.** Cette arborescence montre les deux moitiés du projet : `src/` contient l'application Vue compilée par Vite, et `src-tauri/` contient la crate Rust, sa configuration et ses permissions. Les fichiers `tauri.conf.json`, `Cargo.toml` et `capabilities/default.json` sont les points d'entrée à connaître. Le dossier `public/` est copié tel quel, tandis que `src/assets/` passe par le pipeline Vite.
+
 Le CLI exécute aussi `yarn install` et crée un dépôt Git si le dossier n'en fait pas partie. Vérifiez :
 
 ```bash
@@ -92,6 +100,8 @@ cd taurinote
 git status
 yarn -v
 ```
+
+> 🧭 **Explication.** Ces commandes vérifient que le projet a bien été créé : vous entrez dans le dossier, `git status` confirme l'initialisation du dépôt et `yarn -v` rappelle la version du gestionnaire. Le CLI exécute normalement `yarn install` et initialise Git automatiquement. Si `git status` échoue, le dépôt n'a pas été créé et vous pouvez l'initialiser vous-même.
 
 ---
 
@@ -119,6 +129,8 @@ Ce qui se passe :
   Running `target/debug/tauricours`
 ```
 
+> 🧭 **Explication.** Cette sortie illustre le démarrage réussi : Vite indique l'URL locale, puis Cargo affiche la compilation de la crate et le lancement du binaire. Les mentions `unoptimized + debuginfo` signifient que le build de développement n'est pas optimisé, ce qui accélère les itérations. La fenêtre native ne s'ouvre qu'après la fin de cette compilation.
+
 > ⚠️ La **première** compilation est longue. Les suivantes sont incrémentales. Ne tuez pas le processus : vous verriez une fenêtre blanche tant que Rust n'a pas fini.
 
 ### Cycle de rechargement
@@ -140,6 +152,8 @@ lsof -i :1420        # macOS/Linux
 # Windows PowerShell : Get-NetTCPConnection -LocalPort 1420
 kill <PID>
 ```
+
+> 🧭 **Explication.** `lsof -i :1420` liste le processus qui occupe le port 1420 ; `kill <PID>` l'arrête en remplaçant `<PID>` par l'identifiant affiché. Sous Windows, la commande PowerShell équivalente est donnée en commentaire. Vous pouvez aussi changer de port, mais il faut alors modifier `vite.config.ts` et `devUrl` dans `tauri.conf.json` de façon cohérente.
 
 Ou modifiez le port **des deux côtés** : `vite.config.ts` et `tauri.conf.json` (`devUrl`).
 
@@ -216,6 +230,8 @@ async function greet() {
 yarn tauri dev
 ```
 
+> 🧭 **Explication.** Relancez `yarn tauri dev` après avoir modifié le backend : Tauri recompile la crate Rust et rouvre la fenêtre. Le frontend, lui, est rechargé par Vite sans redémarrage complet. Saisissez un nom dans le champ pour vérifier que l'aller-retour IPC fonctionne.
+
 Saisissez un nom, cliquez sur « Saluer » : le message vient de Rust.
 
 ### 3.4 Exercice guidé : modifier la commande
@@ -242,6 +258,8 @@ fn greet(name: &str, app: tauri::AppHandle) -> Greeting {
 }
 ```
 
+> 🧭 **Explication.** Cet exemple remplace la chaîne de retour par une structure `Greeting` sérialisable en JSON. `#[derive(Serialize)]` permet à Tauri d'envoyer les champs au frontend, et le paramètre `app: tauri::AppHandle` donne accès aux informations de l'application, ici sa version. La commande conserve le nom `greet`, donc seul le type de retour change côté JavaScript.
+
 `src/App.vue` :
 
 ```vue
@@ -266,6 +284,8 @@ async function greet() {
   <p v-if="result">{{ result.message }} (v{{ result.app_version }})</p>
 </template>
 ```
+
+> 🧭 **Explication.** Le frontend déclare une interface `Greeting` qui décrit la forme des données attendues, puis stocke le résultat dans une `ref`. L'appel `invoke<Greeting>("greet", { name: "Vue" })` envoie un argument et type la promesse. Notez que l'interface déclare `appVersion` alors que le template lit `app_version` : alignez ces deux noms selon le nommage choisi côté Rust.
 
 > ⚠️ **Piège classique :** `#[derive(Serialize)]` conserve les noms de champs Rust (`app_version`) sauf si vous ajoutez `#[serde(rename_all = "camelCase")]`. Faites ce choix consciemment et documentez-le. Nous y revenons au chapitre 05.
 
@@ -298,6 +318,8 @@ Pour un build plus rapide (non optimisé) :
 ```bash
 yarn tauri build --debug
 ```
+
+> 🧭 **Explication.** L'option `--debug` produit un build non optimisé, plus rapide à compiler et plus facile à déboguer. Il ne faut pas le distribuer : les performances et la taille ne sont pas représentatives d'une version de production. Utilisez-le pour tester l'empaquetage sans attendre une compilation release complète.
 
 Pour ne produire qu'un type de paquet :
 

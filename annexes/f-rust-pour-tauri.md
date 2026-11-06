@@ -35,12 +35,16 @@ fn main() {
 }
 ```
 
+> 🧭 **Explication.** Ce programme minimal déclare une fonction `main`, point d'entrée obligatoire de tout binaire Rust. La variable `nom` est une référence `&str` vers une chaîne littérale, et `println!` est une macro qui formate le texte en insérant `nom` grâce à la syntaxe `{nom}`. Rust vérifie à la compilation que la variable existe et que son type est compatible avec le formatage.
+
 Compilation et exécution :
 
 ```bash
 rustc main.rs -o taurinote
 ./taurinote
 ```
+
+> 🧭 **Explication.** Ces deux commandes compilent `main.rs` avec le compilateur `rustc` puis exécutent le binaire produit. `-o taurinote` fixe le nom de l'exécutable, ce qui évite le nom par défaut `main`. Dans un vrai projet, on n'appelle pas `rustc` directement : Cargo orchestre la compilation, les dépendances et les profils de build.
 
 Dans un projet Tauri, vous ne lancez pas `rustc` à la main : **Cargo** s'en charge.
 
@@ -52,6 +56,8 @@ cargo test       # lance les tests
 cargo clippy     # conseils de qualité
 cargo fmt        # formate le code
 ```
+
+> 🧭 **Explication.** Ces commandes couvrent le cycle de développement quotidien : `cargo check` valide le code sans générer de binaire, tandis que `build`, `run` et `test` compilent réellement. `clippy` ajoute des analyses de qualité et `fmt` applique le formatage standard. Prenez l'habitude de lancer `check` souvent : c'est le retour le plus rapide du compilateur.
 
 ### `src/main.rs` et `src/lib.rs`
 
@@ -66,6 +72,8 @@ fn main() {
 }
 ```
 
+> 🧭 **Explication.** Ce fichier ne contient qu'un point d'entrée minimal : il délègue immédiatement à `taurinote_lib::run()`, la fonction exportée par la bibliothèque. L'attribut `cfg_attr` masque la console Windows uniquement en release, ce qui évite une fenêtre noire en production. Cette séparation maintient `main.rs` très fin et facilite les tests.
+
 ```rust
 // src/lib.rs
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -75,6 +83,8 @@ pub fn run() {
         .expect("erreur au démarrage de Tauri");
 }
 ```
+
+> 🧭 **Explication.** `run()` construit l'application Tauri avec le builder par défaut, puis démarre la boucle événementielle via `.run(...)`. La macro `tauri::generate_context!()` lit la configuration et embarque les ressources du frontend à la compilation. `expect` transforme une erreur de démarrage en message explicite : ici, l'application ne peut pas continuer si Tauri échoue.
 
 Cette séparation permet de réutiliser la même bibliothèque sur mobile et de tester plus facilement.
 
@@ -92,6 +102,8 @@ let termine: bool = false;
 let priorite: u8 = 2;
 let tags: Vec<String> = vec!["maison".into(), "urgent".into()];
 ```
+
+> 🧭 **Explication.** Cet exemple montre que les variables sont immuables par défaut : il faut `mut` pour modifier `compteur`. Les annotations explicites (`String`, `bool`, `u8`, `Vec<String>`) documentent l'intention et évitent les ambiguïtés à la frontière IPC. `vec!` est une macro qui construit un vecteur, et `.into()` convertit chaque littéral en `String`.
 
 Rust est **statiquement typé** : le type est connu à la compilation. L'inférence évite souvent de l'écrire, mais les types explicites aident à la frontière IPC.
 
@@ -117,6 +129,8 @@ let nombre: i32 = "42".parse().expect("nombre invalide");
 println!("{texte} — {nombre}");
 ```
 
+> 🧭 **Explication.** `to_string()` crée une `String` possédée à partir du nombre, tandis que `parse()` tente de convertir le texte en `i32`. Comme `parse()` peut échouer, il renvoie un `Result` : `expect` le déballera en paniquant si la conversion échoue. Dans du code applicatif, préférez `?` ou un `match` pour gérer proprement l'erreur.
+
 ---
 
 ## 4. Fonctions et expressions
@@ -129,6 +143,8 @@ fn ajouter(a: i32, b: i32) -> i32 {
 }
 ```
 
+> 🧭 **Explication.** La fonction retourne simplement la valeur de sa dernière expression, `a + b`, sans `return` ni point-virgule. En Rust, un bloc est une expression : sa dernière ligne fournit le résultat. C'est ce qui permet d'écrire des fonctions concises tout en gardant un typage strict.
+
 Le point-virgule transforme une expression en instruction et renvoie `()` :
 
 ```rust
@@ -136,6 +152,8 @@ fn mauvais(a: i32, b: i32) -> i32 {
     a + b; // ❌ retourne () et ne compile pas
 }
 ```
+
+> 🧭 **Explication.** Le point-virgule après `a + b` transforme l'expression en instruction et fait donc retourner `()` au bloc. Le compilateur signale une incompatibilité entre `()` et le type de retour annoncé `i32`. C'est une erreur classique lorsqu'on vient d'un langage où `return` est obligatoire.
 
 ### Retour anticipé
 
@@ -154,6 +172,8 @@ fn validate_title(title: &str) -> Result<String, String> {
     Ok(trimmed.to_string())
 }
 ```
+
+> 🧭 **Explication.** La fonction emprunte le titre en `&str`, le nettoie avec `trim()`, puis vérifie deux règles métier avant de renvoyer une `String` possédée. Les `return Err(...)` permettent de sortir tôt, et le `Ok(...)` final exprime le succès. Le type `Result<String, String>` rend l'échec visible dans la signature et oblige l'appelant à le traiter.
 
 > ⚠️ `chars().count()` compte les caractères Unicode, `len()` compte les octets. Pour une limite visible par l'utilisateur, utilisez `chars().count()`.
 
@@ -196,11 +216,15 @@ pub enum Priority {
 }
 ```
 
+> 🧭 **Explication.** Cette enum énumère les trois valeurs possibles d'une priorité, sans champ associé. Les dérivations ajoutent le débogage, la copie, la comparaison et la sérialisation Serde. `rename_all = "lowercase"` fait correspondre les variantes Rust aux chaînes `"low"`, `"normal"` et `"high"` attendues côté TypeScript.
+
 Côté TypeScript :
 
 ```ts
 export type Priority = "low" | "normal" | "high";
 ```
+
+> 🧭 **Explication.** Ce type TypeScript reproduit exactement la représentation JSON de l'enum Rust. L'union de littéraux limite les valeurs autorisées et permet au compilateur TypeScript de signaler une priorité invalide. Il doit rester synchronisé avec `rename_all = "lowercase"` côté Rust.
 
 ### `match` : exhaustif et lisible
 
@@ -213,6 +237,8 @@ fn poids(priority: Priority) -> u8 {
     }
 }
 ```
+
+> 🧭 **Explication.** `match` compare la priorité à chaque variante et renvoie un poids numérique dans tous les cas. Comme les trois variantes sont couvertes, le compilateur accepte le `match` ; s'il en manquait une, il refuserait la compilation. Cette exhaustivité évite les oublis lors de l'ajout d'une nouvelle priorité.
 
 Le compilateur refuse un `match` incomplet. C'est une protection, pas une contrainte.
 
@@ -228,6 +254,8 @@ let Some(window) = app.get_webview_window("main") else {
 };
 ```
 
+> 🧭 **Explication.** `if let` exécute le bloc uniquement si la fenêtre `"main"` existe, sans forcer la gestion du cas absent. `let else` fait l'inverse : il poursuit si la valeur est présente, sinon il exécute la branche de secours qui doit diverger (`return`, `panic!` ou `continue`). Ces deux formes évitent des `match` verbeux pour les `Option`.
+
 ---
 
 ## 6. `Option` et `Result`
@@ -240,6 +268,8 @@ fn find_todo(todos: &[Todo], id: i64) -> Option<&Todo> {
 }
 ```
 
+> 🧭 **Explication.** La fonction parcourt une slice de tâches et renvoie une référence vers celle dont l'identifiant correspond. Le retour `Option<&Todo>` exprime à la fois l'absence possible et le fait qu'on emprunte la tâche sans la copier. La durée de vie de la référence est liée à celle de `todos`, ce que le compilateur vérifie.
+
 Utilisation :
 
 ```rust
@@ -249,6 +279,8 @@ match find_todo(&todos, 42) {
 }
 ```
 
+> 🧭 **Explication.** Ce `match` traite explicitement les deux cas d'un `Option` : une tâche trouvée ou aucune correspondance. Rust ne permet pas d'oublier le cas `None`, ce qui évite les erreurs de type « null pointer » fréquentes ailleurs. L'emprunt `todo` reste valide pendant l'exécution de la branche.
+
 Chaînage :
 
 ```rust
@@ -256,6 +288,8 @@ let due = find_todo(&todos, 42)
     .and_then(|todo| todo.due_date.as_deref())
     .unwrap_or("sans échéance");
 ```
+
+> 🧭 **Explication.** `and_then` enchaîne une opération qui renvoie elle-même un `Option`, ici l'accès à `due_date`. `as_deref()` convertit l'`Option<String>` en `Option<&str>` sans déplacer la chaîne, et `unwrap_or` fournit une valeur par défaut. Ce style déclaratif évite les imbrications de `match` tout en restant sûr.
 
 ### `Result<T, E>` : l'échec est explicite
 
@@ -267,6 +301,8 @@ fn read_config(path: &str) -> Result<String, std::io::Error> {
 }
 ```
 
+> 🧭 **Explication.** La fonction délègue la lecture à `fs::read_to_string`, qui renvoie un `Result<String, io::Error>`. Le type d'erreur est explicite, ce qui permet à l'appelant de distinguer un fichier absent d'un problème de droits. Aucune exception implicite : l'échec fait partie de la signature.
+
 L'opérateur `?` propage l'erreur :
 
 ```rust
@@ -275,6 +311,8 @@ fn read_title(path: &str) -> Result<String, std::io::Error> {
     Ok(content.lines().next().unwrap_or("").to_string())
 }
 ```
+
+> 🧭 **Explication.** L'opérateur `?` tente la lecture et, en cas d'erreur, retourne immédiatement l'erreur à l'appelant. En cas de succès, il extrait la `String` et permet de continuer. `lines().next()` peut renvoyer `None` pour un fichier vide, d'où le `unwrap_or("")` qui fournit une chaîne vide par défaut.
 
 ### Commandes Tauri : `Result<T, String>`
 
@@ -289,6 +327,8 @@ fn create_todo(title: String) -> Result<Todo, String> {
 }
 ```
 
+> 🧭 **Explication.** L'attribut `#[tauri::command]` expose la fonction au frontend via IPC. Elle valide le titre avec `?`, qui propage une `String` d'erreur, puis renvoie un `Todo` sérialisable en cas de succès. Le type `Result<Todo, String>` indique à Tauri comment transmettre succès et échec.
+
 Côté TypeScript :
 
 ```ts
@@ -299,6 +339,8 @@ try {
   console.error(String(error));
 }
 ```
+
+> 🧭 **Explication.** `invoke` appelle la commande Rust et renvoie une promesse typée `Todo`. Si Rust retourne `Err`, la promesse est rejetée et la chaîne d'erreur arrive dans le `catch`. `String(error)` garantit un affichage lisible même si la valeur n'est pas déjà une chaîne.
 
 > 💡 Pour une application plus grosse, préférez un type d'erreur maison (section 13). `String` est parfait pour démarrer et pour les exercices.
 

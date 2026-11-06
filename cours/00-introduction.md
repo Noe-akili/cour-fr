@@ -39,6 +39,8 @@ Autrement dit : vous écrivez l'interface comme un site web, mais vous obtenez u
 └─────────────────────────────────────────────────────────────┘
 ```
 
+> 🧭 **Explication.** Ce schéma résume l'architecture en deux mondes reliés par l'IPC : la WebView affiche l'interface Vue, tandis que le cœur Rust accède aux API natives. La flèche centrale indique que les échanges passent par des messages JSON, et non par un serveur HTTP. Retenez que le frontend ne touche jamais directement le système : tout accès passe par une commande, un événement ou un plugin autorisé.
+
 ### Ce que Tauri n'est pas
 
 - **Pas un serveur web déguisé.** En production, les fichiers frontend sont embarqués dans le binaire et servis via un protocole interne (`tauri://localhost`, `http://tauri.localhost` selon l'OS).
@@ -197,6 +199,8 @@ Tout au long du cours, nous construisons **Taurinote**, une application de gesti
            ▼                          ▼
      taurinote.db               Icône système
 ```
+
+> 🧭 **Explication.** Cette maquette présente l'écran principal de Taurinote : une barre latérale pour les filtres et les tags, une liste de tâches au centre, puis des actions transverses (import/export, notifications, paramètres). Les deux flèches du bas rappellent les dépendances natives : SQLite pour la persistance et le tray pour l'icône système. Elle sert de fil conducteur : chaque chapitre ajoute une brique à cet écran sans changer l'architecture d'ensemble.
 
 ### Fonctionnalités
 
